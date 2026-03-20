@@ -1,0 +1,18 @@
+# Build outputs
+target/
+bin/
+
+# Maven wrapper cache (generated locally)
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE / tooling
+.tools/
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS and logs
+.DS_Store
+Thumbs.db
+*.log
