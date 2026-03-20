@@ -2,7 +2,7 @@ package com.example.tickets;
 
 public class ConsoleReport {
 
-    private static final int WIDTH = 108;
+    private static final int WIDTH = 168;
 
     public void printPresentationHeader(int ticketCount, int buyerCount, long delayMillis) {
         printSeparator('=');
@@ -10,7 +10,7 @@ public class ConsoleReport {
         printSeparator('=');
         System.out.printf("Scenario                : %d tickets, %d buyer threads%n", ticketCount, buyerCount);
         System.out.printf("Artificial delay        : %d ms between check and update%n", delayMillis);
-        System.out.println("Goal                    : Compare an unsafe race condition with a synchronized solution");
+        System.out.println("Goal                    : Compare a broken approval flow with a synchronized solution");
         printSeparator('=');
         System.out.println();
     }
@@ -25,21 +25,23 @@ public class ConsoleReport {
         printSeparator('-');
         System.out.println("Per-thread results");
         printSeparator('-');
-        System.out.printf("%-10s | %-16s | %-7s | %-14s | %-16s | %s%n",
+        System.out.printf("%-10s | %-16s | %-7s | %-14s | %-12s | %-16s | %s%n",
                 "Buyer",
                 "Worker thread",
                 "Result",
                 "Observed stock",
+                "Proof token",
                 "Remaining stock",
                 "Explanation");
         printSeparator('-');
 
         for (PurchaseAttempt attempt : result.getAttempts()) {
-            System.out.printf("%-10s | %-16s | %-7s | %-14s | %-16s | %s%n",
+            System.out.printf("%-10s | %-16s | %-7s | %-14s | %-12s | %-16s | %s%n",
                     attempt.getBuyerId(),
                     attempt.getWorkerThreadName(),
                     attempt.isSuccess() ? "SUCCESS" : "FAILURE",
                     formatStockValue(attempt.getStockObservedBeforeAttempt()),
+                    attempt.getProofToken(),
                     formatStockValue(attempt.getRemainingStockAfterAttempt()),
                     attempt.getDetail());
         }
@@ -50,6 +52,7 @@ public class ConsoleReport {
         System.out.printf("Final remaining stock   : %d%n", result.getFinalRemainingStock());
         System.out.printf("Successful purchases    : %d%n", result.getSuccessfulPurchases());
         System.out.printf("Failed purchases        : %d%n", result.getFailedPurchases());
+        System.out.printf("Proof tokens issued     : %d%n", result.getProofTokensIssued());
         System.out.printf("Overselling happened    : %s%n", yesOrNo(result.isOversold()));
         System.out.printf("Extra tickets sold      : %d%n", result.getExtraTicketsSold());
         System.out.println();
@@ -61,6 +64,8 @@ public class ConsoleReport {
         printSeparator('=');
         System.out.printf("Unsafe successful purchases : %d%n", unsafeResult.getSuccessfulPurchases());
         System.out.printf("Safe successful purchases   : %d%n", safeResult.getSuccessfulPurchases());
+        System.out.printf("Unsafe proof tokens issued  : %d%n", unsafeResult.getProofTokensIssued());
+        System.out.printf("Safe proof tokens issued    : %d%n", safeResult.getProofTokensIssued());
         System.out.printf("Unsafe remaining stock      : %d%n", unsafeResult.getFinalRemainingStock());
         System.out.printf("Safe remaining stock        : %d%n", safeResult.getFinalRemainingStock());
         System.out.printf("Overselling in unsafe?      : %s%n", yesOrNo(unsafeResult.isOversold()));
@@ -73,9 +78,10 @@ public class ConsoleReport {
 
     private String buildConclusion(SimulationResult unsafeResult, SimulationResult safeResult) {
         if (unsafeResult.isOversold() && !safeResult.isOversold()) {
-            return "The unsafe version oversold tickets because the stock check and stock update were not atomic. "
-                    + "The safe version kept both operations inside one synchronized critical section, so mutual "
-                    + "exclusion prevented data inconsistency.";
+            return "In the unsafe version, many buyers received proof tokens from the same unsynchronized stock "
+                    + "snapshot, so the system looked valid to each buyer while the shared inventory became "
+                    + "inconsistent. In the safe version, approval and stock update stayed inside one synchronized "
+                    + "critical section, so mutual exclusion prevented extra sales.";
         }
 
         return "The comparison completed, but the expected contrast was not fully observed. "

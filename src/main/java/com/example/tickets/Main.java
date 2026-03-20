@@ -20,7 +20,11 @@ public class Main {
             );
 
             TicketInventory unsafeInventory = new TicketInventory(config.ticketCount());
-            TicketService unsafeService = new UnsafeTicketService(unsafeInventory, ARTIFICIAL_DELAY_MILLIS);
+            TicketService unsafeService = new UnsafeTicketService(
+                    unsafeInventory,
+                    ARTIFICIAL_DELAY_MILLIS,
+                    config.buyerCount()
+            );
             SimulationResult unsafeResult = runner.runSimulation(
                     "UNSAFE VERSION",
                     unsafeInventory,

@@ -71,6 +71,7 @@ public class SimulationRunner {
                         false,
                         PurchaseAttempt.NOT_AVAILABLE,
                         PurchaseAttempt.NOT_AVAILABLE,
+                        PurchaseAttempt.NO_PROOF_TOKEN,
                         "Task failed with exception: " + cause.getClass().getSimpleName() + " - " + cause.getMessage()
                 ));
             }

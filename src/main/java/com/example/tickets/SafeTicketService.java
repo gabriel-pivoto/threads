@@ -1,6 +1,10 @@
 package com.example.tickets;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class SafeTicketService implements TicketService {
+
+    private static final AtomicInteger PROOF_SEQUENCE = new AtomicInteger(1);
 
     private final TicketInventory inventory;
     private final long artificialDelayMillis;
@@ -27,9 +31,12 @@ public class SafeTicketService implements TicketService {
                         false,
                         observedStock,
                         observedStock,
+                        PurchaseAttempt.NO_PROOF_TOKEN,
                         "Thread entered the critical section after stock reached zero."
                 );
             }
+
+            String proofToken = createProofToken(observedStock);
 
             // The same artificial delay is kept here to make the comparison fair.
             // The difference is that the delay now happens inside the synchronized
@@ -43,9 +50,16 @@ public class SafeTicketService implements TicketService {
                     true,
                     observedStock,
                     remainingAfterAttempt,
-                    "Purchase succeeded inside one synchronized critical section."
+                    proofToken,
+                    "The buyer received proof " + proofToken
+                            + " only after entering the synchronized critical section, so the approval and the stock "
+                            + "update remain consistent."
             );
         }
+    }
+
+    private String createProofToken(int observedStock) {
+        return "S-" + observedStock + "-" + String.format("%04d", PROOF_SEQUENCE.getAndIncrement());
     }
 
     private void pauseForDemonstration() {

@@ -41,6 +41,7 @@ public class BuyerTask implements Callable<PurchaseAttempt> {
                     false,
                     PurchaseAttempt.NOT_AVAILABLE,
                     PurchaseAttempt.NOT_AVAILABLE,
+                    PurchaseAttempt.NO_PROOF_TOKEN,
                     "Thread was interrupted before it could attempt the purchase."
             );
         }
