@@ -15,6 +15,7 @@ public class SimulationResult {
     private final boolean oversold;
     private final int extraTicketsSold;
     private final int proofTokensIssued;
+    private final int approvalsFromInitialSnapshot;
 
     public SimulationResult(
             String simulationType,
@@ -35,6 +36,10 @@ public class SimulationResult {
         this.extraTicketsSold = Math.max(0, successfulPurchases - initialTicketCount);
         this.oversold = extraTicketsSold > 0;
         this.proofTokensIssued = (int) attempts.stream().filter(PurchaseAttempt::hasProofToken).count();
+        this.approvalsFromInitialSnapshot = (int) attempts.stream()
+                .filter(PurchaseAttempt::isSuccess)
+                .filter(attempt -> attempt.getStockObservedBeforeAttempt() == initialTicketCount)
+                .count();
     }
 
     public String getSimulationType() {
@@ -79,5 +84,9 @@ public class SimulationResult {
 
     public int getProofTokensIssued() {
         return proofTokensIssued;
+    }
+
+    public int getApprovalsFromInitialSnapshot() {
+        return approvalsFromInitialSnapshot;
     }
 }

@@ -59,6 +59,23 @@ public class PurchaseAttempt {
         return !NO_PROOF_TOKEN.equals(proofToken);
     }
 
+    public int getProofSequence() {
+        if (!hasProofToken()) {
+            return Integer.MAX_VALUE;
+        }
+
+        int lastDash = proofToken.lastIndexOf('-');
+        if (lastDash < 0 || lastDash == proofToken.length() - 1) {
+            return Integer.MAX_VALUE;
+        }
+
+        try {
+            return Integer.parseInt(proofToken.substring(lastDash + 1));
+        } catch (NumberFormatException exception) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
     public String getDetail() {
         return detail;
     }

@@ -3,7 +3,7 @@ package com.example.tickets;
 public class Main {
 
     private static final int DEFAULT_TICKET_COUNT = 10;
-    private static final int DEFAULT_BUYER_COUNT = 50;
+    private static final int DEFAULT_BUYER_COUNT = 20;
     private static final long ARTIFICIAL_DELAY_MILLIS = 50L;
 
     public static void main(String[] args) {
@@ -26,24 +26,12 @@ public class Main {
                     config.buyerCount()
             );
             SimulationResult unsafeResult = runner.runSimulation(
-                    "UNSAFE VERSION",
+                    "UNSAFE TICKET SALE",
                     unsafeInventory,
                     config.buyerCount(),
                     unsafeService
             );
-
-            TicketInventory safeInventory = new TicketInventory(config.ticketCount());
-            TicketService safeService = new SafeTicketService(safeInventory, ARTIFICIAL_DELAY_MILLIS);
-            SimulationResult safeResult = runner.runSimulation(
-                    "SAFE VERSION",
-                    safeInventory,
-                    config.buyerCount(),
-                    safeService
-            );
-
             report.printSimulationReport(unsafeResult);
-            report.printSimulationReport(safeResult);
-            report.printComparison(unsafeResult, safeResult);
         } catch (IllegalArgumentException exception) {
             System.err.println("Invalid configuration: " + exception.getMessage());
             printUsage();
