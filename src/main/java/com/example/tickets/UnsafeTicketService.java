@@ -9,16 +9,16 @@ public class UnsafeTicketService implements TicketService {
 
     private final TicketInventory inventory;
     private final long artificialDelayMillis;
-    private final int minimumApprovedBuyersBeforeCommit;
-    private final AtomicInteger approvedBuyers = new AtomicInteger();
+    private final int firstApprovalWaveSize;
+    private final AtomicInteger approvalReservations = new AtomicInteger();
     private final CountDownLatch approvalBurstLatch = new CountDownLatch(1);
 
     public UnsafeTicketService(TicketInventory inventory, long artificialDelayMillis, int totalBuyerThreads) {
         this.inventory = inventory;
         this.artificialDelayMillis = artificialDelayMillis;
-        this.minimumApprovedBuyersBeforeCommit = Math.min(
+        this.firstApprovalWaveSize = Math.min(
                 totalBuyerThreads,
-                inventory.getInitialTickets() + 1
+                inventory.getInitialTickets() + Math.max(2, inventory.getInitialTickets() / 4)
         );
     }
 
@@ -45,18 +45,38 @@ public class UnsafeTicketService implements TicketService {
         // The system already tells the buyer that the purchase looks valid.
         // This token acts like a receipt or approval signature, even though
         // the stock update has not happened yet.
-        String proofToken = createProofToken(observedStock);
+        int reservationNumber = approvalReservations.incrementAndGet();
 
+        if (reservationNumber <= firstApprovalWaveSize) {
+            String proofToken = createProofToken(observedStock);
+            return commitInFirstWave(
+                    buyerId,
+                    workerThreadName,
+                    observedStock,
+                    proofToken,
+                    reservationNumber
+            );
+        }
+
+        return handleLateArrival(buyerId, workerThreadName);
+    }
+
+    private PurchaseAttempt commitInFirstWave(
+            String buyerId,
+            String workerThreadName,
+            int observedStock,
+            String proofToken,
+            int reservationNumber
+    ) {
         // This delay increases the chance that many threads overlap between
         // the stock check and the stock update. Because there is no mutual
         // exclusion here, several buyers can decide to sell the same ticket.
         //
         // Important: this latch does not protect the inventory. It only waits
-        // until several buyers have already been approved from the same stale
-        // stock snapshot, then releases them together so the oversell becomes
-        // easy to demonstrate in class.
-        int approvalsSoFar = approvedBuyers.incrementAndGet();
-        if (approvalsSoFar >= minimumApprovedBuyersBeforeCommit) {
+        // until the first approval wave is full, then releases that wave
+        // together. This still keeps the code unsafe, but avoids approving
+        // literally every thread in the simulation.
+        if (reservationNumber == firstApprovalWaveSize) {
             approvalBurstLatch.countDown();
         }
 
@@ -76,8 +96,40 @@ public class UnsafeTicketService implements TicketService {
                 proofToken,
                 "The buyer received proof " + proofToken
                         + " from an unsynchronized stock check. Buyer " + buyerId
-                        + " was approved in a burst of at least " + minimumApprovedBuyersBeforeCommit
-                        + " buyers before the inventory update, so several threads can commit using the same stock snapshot."
+                        + " joined the first approval wave of " + firstApprovalWaveSize
+                        + " buyers before the inventory update, so several threads committed from the same stock snapshot."
+        );
+    }
+
+    private PurchaseAttempt handleLateArrival(String buyerId, String workerThreadName) {
+        pauseForLateArrival();
+
+        int refreshedStock = inventory.getRemainingTickets();
+        if (refreshedStock <= 0) {
+            return new PurchaseAttempt(
+                    buyerId,
+                    workerThreadName,
+                    false,
+                    refreshedStock,
+                    refreshedStock,
+                    PurchaseAttempt.NO_PROOF_TOKEN,
+                    "This buyer reached the unsafe flow after the first approval wave had already consumed the available stock."
+            );
+        }
+
+        String proofToken = createProofToken(refreshedStock);
+        pauseForDemonstration();
+        int remainingAfterAttempt = inventory.decrementWithoutValidation();
+
+        return new PurchaseAttempt(
+                buyerId,
+                workerThreadName,
+                true,
+                refreshedStock,
+                remainingAfterAttempt,
+                proofToken,
+                "The buyer arrived after the first approval wave but still managed to receive proof "
+                        + proofToken + " from another stale stock read."
         );
     }
 
@@ -96,6 +148,14 @@ public class UnsafeTicketService implements TicketService {
     private void pauseForDemonstration() {
         try {
             Thread.sleep(artificialDelayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void pauseForLateArrival() {
+        try {
+            Thread.sleep(artificialDelayMillis * 2);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
