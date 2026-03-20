@@ -5,7 +5,7 @@ import java.util.List;
 public class SimulationResult {
 
     private final String simulationType;
-    private final int initialTicketCount;
+    private final int stockAtStart;
     private final int totalBuyerThreads;
     private final List<PurchaseAttempt> attempts;
     private final int finalRemainingStock;
@@ -19,74 +19,42 @@ public class SimulationResult {
 
     public SimulationResult(
             String simulationType,
-            int initialTicketCount,
+            int stockAtStart,
             int totalBuyerThreads,
             List<PurchaseAttempt> attempts,
             int finalRemainingStock,
             long durationMillis
     ) {
         this.simulationType = simulationType;
-        this.initialTicketCount = initialTicketCount;
+        this.stockAtStart = stockAtStart;
         this.totalBuyerThreads = totalBuyerThreads;
         this.attempts = List.copyOf(attempts);
         this.finalRemainingStock = finalRemainingStock;
         this.durationMillis = durationMillis;
         this.successfulPurchases = (int) attempts.stream().filter(PurchaseAttempt::isSuccess).count();
         this.failedPurchases = attempts.size() - successfulPurchases;
-        this.extraTicketsSold = Math.max(0, successfulPurchases - initialTicketCount);
+
+        // Calculate overselling only for this batch execution
+        this.extraTicketsSold = Math.max(0, successfulPurchases - Math.max(0, stockAtStart));
         this.oversold = extraTicketsSold > 0;
+
         this.proofTokensIssued = (int) attempts.stream().filter(PurchaseAttempt::hasProofToken).count();
         this.approvalsFromInitialSnapshot = (int) attempts.stream()
                 .filter(PurchaseAttempt::isSuccess)
-                .filter(attempt -> attempt.getStockObservedBeforeAttempt() == initialTicketCount)
+                .filter(attempt -> attempt.getStockObservedBeforeAttempt() == stockAtStart)
                 .count();
     }
 
-    public String getSimulationType() {
-        return simulationType;
-    }
-
-    public int getInitialTicketCount() {
-        return initialTicketCount;
-    }
-
-    public int getTotalBuyerThreads() {
-        return totalBuyerThreads;
-    }
-
-    public List<PurchaseAttempt> getAttempts() {
-        return attempts;
-    }
-
-    public int getFinalRemainingStock() {
-        return finalRemainingStock;
-    }
-
-    public long getDurationMillis() {
-        return durationMillis;
-    }
-
-    public int getSuccessfulPurchases() {
-        return successfulPurchases;
-    }
-
-    public int getFailedPurchases() {
-        return failedPurchases;
-    }
-
-    public boolean isOversold() {
-        return oversold;
-    }
-
-    public int getExtraTicketsSold() {
-        return extraTicketsSold;
-    }
-
-    public int getProofTokensIssued() {
-        return proofTokensIssued;
-    }
-
-    public int getApprovalsFromInitialSnapshot() {
-        return approvalsFromInitialSnapshot;
-    }
+    public String getSimulationType() { return simulationType; }
+    public int getStockAtStart() { return stockAtStart; }
+    public int getTotalBuyerThreads() { return totalBuyerThreads; }
+    public List<PurchaseAttempt> getAttempts() { return attempts; }
+    public int getFinalRemainingStock() { return finalRemainingStock; }
+    public long getDurationMillis() { return durationMillis; }
+    public int getSuccessfulPurchases() { return successfulPurchases; }
+    public int getFailedPurchases() { return failedPurchases; }
+    public boolean isOversold() { return oversold; }
+    public int getExtraTicketsSold() { return extraTicketsSold; }
+    public int getProofTokensIssued() { return proofTokensIssued; }
+    public int getApprovalsFromInitialSnapshot() { return approvalsFromInitialSnapshot; }
 }

@@ -16,18 +16,22 @@ public class SimulationRunner {
             String simulationType,
             TicketInventory inventory,
             int buyerCount,
+            int startBuyerId,
             TicketService ticketService
     ) throws InterruptedException {
+
+        // Capture stock before this specific batch begins to calculate batch metrics correctly
+        int stockAtStartOfBatch = inventory.getRemainingTickets();
+
         ExecutorService executorService = Executors.newFixedThreadPool(buyerCount);
         CountDownLatch readyLatch = new CountDownLatch(buyerCount);
         CountDownLatch startLatch = new CountDownLatch(1);
         List<Future<PurchaseAttempt>> futures = new ArrayList<>();
 
-        int idWidth = String.valueOf(buyerCount).length();
-
         try {
-            for (int buyerNumber = 1; buyerNumber <= buyerCount; buyerNumber++) {
-                String buyerId = String.format("Buyer-%0" + idWidth + "d", buyerNumber);
+            for (int i = 0; i < buyerCount; i++) {
+                int currentBuyerId = startBuyerId + i;
+                String buyerId = String.format("Buyer-%03d", currentBuyerId);
                 BuyerTask task = new BuyerTask(buyerId, ticketService, readyLatch, startLatch);
                 futures.add(executorService.submit(task));
             }
@@ -45,7 +49,7 @@ public class SimulationRunner {
 
             return new SimulationResult(
                     simulationType,
-                    inventory.getInitialTickets(),
+                    stockAtStartOfBatch,
                     buyerCount,
                     attempts,
                     inventory.getRemainingTickets(),
